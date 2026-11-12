@@ -1,0 +1,40 @@
+//@version=6
+// PipAtlas Bollinger Bands — a 20-period moving average with bands two standard
+// deviations away, plus an honest note about what a band tag does not mean.
+// Education only, never financial advice.
+// https://pipatlas.com
+indicator("PipAtlas Bollinger Bands", shorttitle = "PA BB", overlay = true)
+
+len   = input.int(20,    "Period",        minval = 2,   maxval = 500)
+mult  = input.float(2.0, "Deviations",    minval = 0.5, maxval = 5.0, step = 0.1)
+src   = input.source(close, "Source")
+showFill = input.bool(true, "Shade the band")
+
+// Basis is the SMA of the source; the bands sit mult deviations away. TradingView's
+// ta.stdev is the population form, which is what the MT4/MT5 builds of this
+// indicator use too, so all three platforms line up bar for bar.
+basis = ta.sma(src, len)
+dev   = mult * ta.stdev(src, len)
+upper = basis + dev
+lower = basis - dev
+
+pU = plot(upper, "Upper band", color = color.new(color.red, 20), linewidth = 1)
+pL = plot(lower, "Lower band", color = color.new(color.red, 20), linewidth = 1)
+plot(basis, "Basis", color = color.new(color.blue, 0), linewidth = 2, style = plot.style_line)
+fill(pU, pL, color = showFill ? color.new(color.blue, 93) : na, title = "Band fill")
+
+// A close outside a band is a statement about how far price travelled relative to
+// its own recent noise. It is not a reversal signal: in a trend, price rides the
+// upper or lower band for weeks at a time.
+tagUp = ta.crossover(close, upper)
+tagDn = ta.crossunder(close, lower)
+plotshape(tagUp, title = "Closed above the upper band", style = shape.triangledown, location = location.abovebar, color = color.new(color.maroon, 0), size = size.tiny)
+plotshape(tagDn, title = "Closed below the lower band", style = shape.triangleup,   location = location.belowbar, color = color.new(color.teal, 0),   size = size.tiny)
+
+// Band width, in percent of the basis, is the volatility read most traders are
+// actually looking for when they stare at the bands.
+bw = basis != 0 ? (upper - lower) / basis * 100.0 : na
+plot(bw, "Band width %", display = display.data_window)
+
+alertcondition(tagUp, "Close above upper band", "PipAtlas Bollinger: price closed above the upper band")
+alertcondition(tagDn, "Close below lower band", "PipAtlas Bollinger: price closed below the lower band")

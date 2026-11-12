@@ -1,0 +1,5 @@
+*.mq4 text eol=crlf
+*.mq5 text eol=crlf
+*.set text eol=crlf
+*.pine text eol=lf
+*.md text eol=lf

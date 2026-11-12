@@ -1,0 +1,48 @@
+//@version=5
+//  PipAtlas Balance & Equity Curve — https://pipatlas.com/tools
+//  TradingView cannot read your broker account, so this draws the equity
+//  curve of a trade log you enter: starting balance plus one result per
+//  trade in percent. Shows peak, max drawdown and the underwater stretch.
+//  Education only, never financial advice.
+indicator("PipAtlas Balance & Equity Curve (trade log)", overlay=false, max_lines_count=500, max_labels_count=50)
+
+i_start = input.float(10000.0, "Starting balance", minval = 1)
+i_log   = input.string("2.0, -1.0, 3.5, -0.5, 1.5, -2.0, 4.0, 1.0", "Trade results (% each, comma separated)", tooltip = "One closed-trade result in percent, separated by commas. Example: 2.0, -1.0, 3.5")
+i_up    = input.color(color.teal, "Equity line")
+i_dn    = input.color(color.red, "Drawdown shading")
+
+var float eq[] = array.new_float()
+var float peak[] = array.new_float()
+if barstate.isfirst
+    float e = i_start
+    float pk = i_start
+    array.push(eq, e)
+    array.push(peak, pk)
+    for part in str.split(i_log, ",")
+        float r = str.tonumber(part)
+        if not na(r)
+            e := e * (1.0 + r / 100.0)
+            pk := math.max(pk, e)
+            array.push(eq, e)
+            array.push(peak, pk)
+
+var line eqLine = na
+var line ddLine = na
+if barstate.islast and array.size(eq) > 1
+    int n = array.size(eq)
+    float step = math.max(1, math.round(n / 30.0))
+    // equity polyline across the last n spaced bars
+    for i = 1 to n - 1
+        int xb = bar_index - (n - i) * step
+        int xa = bar_index - (n - i + 1) * step
+        line.new(x1 = xa, y1 = array.get(eq, i - 1), x2 = xb, y2 = array.get(eq, i), color = i_up, width = 2)
+        line.new(x1 = xa, y1 = array.get(peak, i - 1), x2 = xb, y2 = array.get(peak, i), color = i_dn, width = 1, style = line.style_dotted)
+    float fin = array.get(eq, n - 1)
+    float pk2 = array.max(peak)
+    float maxdd = 0.0
+    for i = 0 to n - 1
+        maxdd := math.max(maxdd, (array.get(peak, i) - array.get(eq, i)) / array.get(peak, i) * 100.0)
+    label.new(x = bar_index, y = fin, text = "Equity " + str.tostring(fin, "#.##") + "  (max DD " + str.tostring(maxdd, "#.#") + "%)", style = label.style_label_left, color = i_up, textcolor = color.white, size = size.small)
+    label.new(x = bar_index - n * step, y = i_start, text = "Start " + str.tostring(i_start, "#.##"), style = label.style_label_right, color = color.gray, textcolor = color.white, size = size.small)
+
+plot(array.size(eq) > 0 and barstate.islast ? array.get(eq, array.size(eq) - 1) : na, "Final equity", display = display.data_window)

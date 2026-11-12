@@ -1,0 +1,15 @@
+//@version=5
+// PipAtlas - ATR Stop (MIT License) - education only, test on demo.
+// Chandelier-style ATR trailing level for trend context.
+indicator("PipAtlas - ATR Stop", overlay=true)
+len  = input.int(14, "ATR period")
+mult = input.float(2.5, "ATR multiplier", step=0.1)
+a    = ta.atr(len)
+
+var float longStop  = na
+var float shortStop = na
+longStop  := close > nz(longStop[1],  close)  ? math.max(close - mult * a, nz(longStop[1],  close - mult * a)) : close - mult * a
+shortStop := close < nz(shortStop[1], close) ? math.min(close + mult * a, nz(shortStop[1], close + mult * a)) : close + mult * a
+
+plot(longStop,  "ATR Stop (long)",  color=color.teal,    linewidth=2)
+plot(shortStop, "ATR Stop (short)", color=color.orange,  linewidth=2)

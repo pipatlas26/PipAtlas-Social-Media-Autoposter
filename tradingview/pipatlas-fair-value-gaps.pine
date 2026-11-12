@@ -1,0 +1,60 @@
+//@version=6
+// PipAtlas Fair Value Gaps — draws three-candle imbalance boxes.
+// Education only, never financial advice. https://pipatlas.com
+indicator("PipAtlas Fair Value Gaps", overlay = true, max_boxes_count = 500)
+
+lookback   = input.int(300, "Bars to scan",    minval = 10, maxval = 2000)
+maxBoxes   = input.int(15,  "Max boxes drawn", minval = 1,  maxval = 50)
+showFilled = input.bool(false, "Keep boxes after they fill")
+bullColor  = input.color(color.new(color.blue, 70), "Bullish gap")
+bearColor  = input.color(color.new(color.red, 70),  "Bearish gap")
+
+// A bullish gap: candle 3's low sits above candle 1's high (3 consecutive
+// confirmed candles). The zone is [High(c1), Low(c3)]. A gap counts as
+// filled once price trades fully back through the zone.
+
+var box[]    gBoxes = array.new_box()
+var float[]  gTops  = array.new_float()
+var float[]  gBots  = array.new_float()
+var bool[]   gBulls = array.new_bool()
+
+// Detect on the last three CONFIRMED candles: [3]=c1, [2]=c2, [1]=c3.
+isBull = low[1] > high[3]
+isBear = high[1] < low[3]
+
+if bar_index > lookback + 5 and (isBull or isBear) and barstate.isconfirmed
+    top    = isBull ? low[1]  : low[3]
+    bottom = isBull ? high[3] : high[1]
+    b = box.new(left = bar_index - 3, top = top, right = bar_index + 20, bottom = bottom,
+         border_color = isBull ? bullColor : bearColor, border_style = line.style_dotted,
+         bgcolor = isBull ? bullColor : bearColor)
+    array.push(gBoxes, b)
+    array.push(gTops, top)
+    array.push(gBots, bottom)
+    array.push(gBulls, isBull)
+
+// Fill tracking: a box dies once price trades fully through its zone.
+if array.size(gBoxes) > 0
+    for i = array.size(gBoxes) - 1 to 0
+        top    = array.get(gTops, i)
+        bottom = array.get(gBots, i)
+        bull   = array.get(gBulls, i)
+        filled = bull ? low <= bottom : high >= top
+        if filled and not showFilled
+            box.delete(array.get(gBoxes, i))
+            array.remove(gBoxes, i)
+            array.remove(gTops, i)
+            array.remove(gBots, i)
+            array.remove(gBulls, i)
+
+// Keep the live boxes extended to the right edge of the chart.
+if barstate.islast and array.size(gBoxes) > 0
+    for i = 0 to array.size(gBoxes) - 1
+        box.set_right(array.get(gBoxes, i), bar_index + 20)
+
+// Cap the count: drop the oldest boxes beyond the limit.
+if array.size(gBoxes) > maxBoxes
+    box.delete(array.shift(gBoxes))
+    array.shift(gTops)
+    array.shift(gBots)
+    array.shift(gBulls)

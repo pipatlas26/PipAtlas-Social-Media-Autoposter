@@ -1,0 +1,46 @@
+//@version=6
+// PipAtlas Stochastic Oscillator — %K/%D with 80/20 zones and an optional
+// higher-timeframe trend filter. Education only, never financial advice.
+// https://pipatlas.com
+indicator("PipAtlas Stochastic Oscillator", shorttitle = "PA Stochastic", overlay = false)
+
+kPeriod  = input.int(14,    "%K period",           minval = 2,  maxval = 200)
+slowing  = input.int(3,     "%K slowing",          minval = 1,  maxval = 20)
+dPeriod  = input.int(3,     "%D period",           minval = 1,  maxval = 20)
+obLevel  = input.float(80,  "Overbought level",    minval = 50, maxval = 100)
+osLevel  = input.float(20,  "Oversold level",      minval = 0,  maxval = 50)
+useHtf   = input.bool(false, "Only signal with a higher-TF trend")
+htf      = input.timeframe("240", "Higher timeframe")
+
+// %K = 100 * (close - lowest low) / (highest high - lowest low), smoothed.
+// %D is the SMA of %K. Above 80 price is closing near the top of its recent
+// range — in a trend that persists, which is why the filter is offered.
+rawK = ta.stoch(close, high, low, kPeriod)
+k    = ta.sma(rawK, slowing)
+d    = ta.sma(k, dPeriod)
+
+htfClose = request.security(syminfo.tickerid, htf, close, lookahead = barmerge.lookahead_off)
+htfMa    = request.security(syminfo.tickerid, htf, ta.ema(close, 50), lookahead = barmerge.lookahead_off)
+upTrend   = htfClose > htfMa
+downTrend = htfClose < htfMa
+
+crossUp  = ta.crossover(k, d)
+crossDn  = ta.crossunder(k, d)
+sigLong  = crossUp and k < osLevel and (not useHtf or upTrend)
+sigShort = crossDn and k > obLevel and (not useHtf or downTrend)
+
+plot(k, "%K", color = color.new(color.blue, 0), linewidth = 2)
+plot(d, "%D", color = color.new(color.red, 0),  linewidth = 1, style = plot.style_circles)
+hline(obLevel, "Overbought", color = color.new(color.gray, 60), linestyle = hline.style_dotted)
+hline(osLevel, "Oversold",   color = color.new(color.gray, 60), linestyle = hline.style_dotted)
+hline(50,      "Midline",    color = color.new(color.gray, 80), linestyle = hline.style_dashed)
+
+plotshape(sigLong,  title = "Cross up from oversold",  style = shape.triangleup,   location = location.bottom, color = color.new(color.teal, 0), size = size.tiny)
+plotshape(sigShort, title = "Cross down from overbought", style = shape.triangledown, location = location.top,    color = color.new(color.maroon, 0), size = size.tiny)
+
+alertcondition(sigLong,  "Stochastic: cross up from oversold",  "PipAtlas Stochastic: %K crossed above %D from oversold")
+alertcondition(sigShort, "Stochastic: cross down from overbought", "PipAtlas Stochastic: %K crossed below %D from overbought")
+
+// Honest note, kept in the script so it cannot be stripped from a copied chart:
+// the indicator describes where price closed inside its recent range. It does
+// not measure trend strength and it cannot predict reversals.

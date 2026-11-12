@@ -1,0 +1,50 @@
+//@version=5
+//  PipAtlas Market Structure — https://pipatlas.com/tools
+//  Labels swing highs/lows and the two events traders name: a break of structure (BOS) in the
+//  direction of the last swing, and a change of character (CHoCH) against it. Both are
+//  descriptions of past price, not forecasts. Education only. MIT licensed.
+indicator("PipAtlas Market Structure", overlay = true, max_lines_count = 200, max_labels_count = 200)
+
+pivotLen  = input.int(5, "Swing pivot length (bars either side)", minval = 2)
+showLbl   = input.bool(true, "Label swings")
+confirmOn = input.string("close", "Confirm a break on", options = ["close", "wick"])
+
+ph = ta.pivothigh(high, pivotLen, pivotLen)
+pl = ta.pivotlow(low, pivotLen, pivotLen)
+
+var float lastSwingHigh = na
+var float lastSwingLow  = na
+var int   lastHighBar   = na
+var int   lastLowBar    = na
+
+if not na(ph)
+    lastSwingHigh := ph
+    lastHighBar   := bar_index - pivotLen
+    if showLbl
+        label.new(lastHighBar, ph, "H", style = label.style_label_down, color = color.new(color.red, 80), textcolor = color.red)
+
+if not na(pl)
+    lastSwingLow := pl
+    lastLowBar   := bar_index - pivotLen
+    if showLbl
+        label.new(lastLowBar, pl, "L", style = label.style_label_up, color = color.new(color.teal, 80), textcolor = color.teal)
+
+priceForBreak = confirmOn == "close" ? close : high
+priceForBreakDn = confirmOn == "close" ? close : low
+
+brokeUp   = not na(lastSwingHigh) and priceForBreak   > lastSwingHigh
+brokeDown = not na(lastSwingLow)  and priceForBreakDn < lastSwingLow
+
+var int trendDir = 0        // 1 = structure up, -1 = structure down
+if brokeUp and not na(lastHighBar)
+    trendDir := 1
+    line.new(lastHighBar, lastSwingHigh, bar_index, lastSwingHigh, color = color.new(color.green, 30), style = line.style_dashed)
+    lastSwingHigh := na   // consume the level so it is drawn once
+if brokeDown and not na(lastLowBar)
+    trendDir := -1
+    line.new(lastLowBar, lastSwingLow, bar_index, lastSwingLow, color = color.new(color.maroon, 30), style = line.style_dashed)
+    lastSwingLow := na
+
+// a CHoCH is simply a break against the prevailing direction — the same event, read differently
+plotchar(trendDir, "Structure direction (+1 up, -1 down)", display = display.data_window)
+alertcondition(brokeUp or brokeDown, title = "Structure break", message = "Structure break on {{ticker}} {{interval}}")

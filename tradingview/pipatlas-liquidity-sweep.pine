@@ -1,0 +1,32 @@
+//@version=5
+//  PipAtlas Liquidity Sweep Detector — https://pipatlas.com/tools
+//  Marks the moment a bar trades beyond the previous session high or low and closes back inside.
+//  That is a price event, not a prediction: plenty of sweeps keep going. Education only,
+//  never financial advice. MIT licensed.
+indicator("PipAtlas Liquidity Sweep", overlay = true, max_lines_count = 100)
+
+lookback  = input.int(20, "Bars forming the reference high/low", minval = 5)
+useAsia   = input.bool(true, "Restrict the reference window to the Asian session")
+asiaSess  = input.session("2000-0200", "Asian session (exchange time)")
+showLabels = input.bool(true, "Label each sweep")
+
+inAsia = not useAsia or not na(time(timeframe.period, asiaSess))
+sinceStart = ta.barssince(not inAsia == false)  // resets on a session change
+
+refHigh = ta.highest(high, lookback)
+refLow  = ta.lowest(low, lookback)
+
+// a sweep: trade through the level, close back the other side of it
+sweptHigh = high > refHigh[1] and close < refHigh[1]
+sweptLow  = low  < refLow[1]  and close > refLow[1]
+
+plotshape(sweptHigh and showLabels, title = "Swept prior high", style = shape.triangledown,
+     location = location.abovebar, color = color.new(color.red, 0), text = "sweep")
+plotshape(sweptLow and showLabels, title = "Swept prior low", style = shape.triangleup,
+     location = location.belowbar, color = color.new(color.teal, 0), text = "sweep")
+
+plot(refHigh, "Reference high", color = color.new(color.red, 70))
+plot(refLow,  "Reference low",  color = color.new(color.teal, 70))
+
+// what the detector cannot do: it cannot see orders, and one sweep is one observation.
+alertcondition(sweptHigh or sweptLow, title = "Liquidity sweep", message = "Liquidity sweep on {{ticker}} ({{interval}})")

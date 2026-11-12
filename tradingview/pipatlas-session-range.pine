@@ -1,0 +1,48 @@
+//@version=5
+//  PipAtlas Session Range — https://pipatlas.com/tools
+//  Draws the Asian, London and New York session ranges as boxes and plots each session's
+//  high/low forward until it is broken, so you can see which range the current price is
+//  working against. Boxes are a reading aid, not a signal. Education only. MIT licensed.
+indicator("PipAtlas Session Range", overlay = true, max_boxes_count = 60, max_lines_count = 60)
+
+asiaSess   = input.session("2000-0200", "Asian session")
+londonSess = input.session("0200-0500", "London session")
+nySess     = input.session("0800-1700", "New York session")
+asiaCol    = input.color(color.new(color.blue, 85), "Asian box")
+londonCol  = input.color(color.new(color.orange, 85), "London box")
+nyCol      = input.color(color.new(color.purple, 85), "New York box")
+
+f_sessionBox(string sess, color col) =>
+    inSess = not na(time(timeframe.period, sess))
+    var box  b = na
+    var float hi = na
+    var float lo = na
+    if inSess and not inSess[1]
+        hi := high
+        lo := low
+        b  := box.new(bar_index, hi, bar_index, lo, border_color = col, bgcolor = col)
+    if inSess
+        hi := math.max(nz(hi, high), high)
+        lo := math.min(nz(lo, low), low)
+        if not na(b)
+            box.set_top(b, hi)
+            box.set_bottom(b, lo)
+            box.set_right(b, bar_index)
+    [hi, lo, inSess]
+
+[aHi, aLo, aIn] = f_sessionBox(asiaSess,   asiaCol)
+[lHi, lLo, lIn] = f_sessionBox(londonSess, londonCol)
+[nHi, nLo, nIn] = f_sessionBox(nySess,     nyCol)
+
+// the levels a reader actually plans against: the last completed Asian range
+var float asiaRangeHigh = na
+var float asiaRangeLow  = na
+if aIn[1] and not aIn
+    asiaRangeHigh := aHi[1]
+    asiaRangeLow  := aLo[1]
+
+plot(asiaRangeHigh, "Prior Asia high", color = color.new(color.blue, 0), style = plot.style_linebr)
+plot(asiaRangeLow,  "Prior Asia low",  color = color.new(color.blue, 0), style = plot.style_linebr)
+
+// honest limit, printed on the chart rather than buried in a description:
+// session boundaries follow the exchange timezone of the chart, so verify them on your own feed.

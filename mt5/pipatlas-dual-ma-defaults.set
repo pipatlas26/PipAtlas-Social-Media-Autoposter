@@ -1,0 +1,9 @@
+; PipAtlas Dual MA Cross - starter preset for MT4
+; Load it from the indicator Inputs tab (Load), after the .mq4 is in MQL4/Indicators.
+; These are conventions, not optimal values: change one input, then test.
+; Education only, never financial advice. MIT licensed.
+FastPeriod=20
+SlowPeriod=50
+MAMethod=1
+ShowArrows=1
+PopupAlert=0

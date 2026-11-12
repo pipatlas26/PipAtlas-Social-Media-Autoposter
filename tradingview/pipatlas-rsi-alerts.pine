@@ -1,0 +1,23 @@
+//@version=5
+// ─────────────────────────────────────────────────────────────
+//  PipAtlas RSI Alerts — Pine Script v5
+//  Copyright 2026 PipAtlas · MIT License · https://pipatlas.com
+//  HOW TO USE: TradingView → Pine Editor → paste → "Add to chart".
+//  EDUCATION ONLY — not a trading signal.
+// ─────────────────────────────────────────────────────────────
+indicator("PipAtlas RSI Alerts", shorttitle="PA RSI", overlay=false)
+
+len    = input.int(14,    "RSI length", minval=2)
+obLvl  = input.float(70.0, "Overbought level")
+osLvl  = input.float(30.0, "Oversold level")
+
+r = ta.rsi(close, len)
+plot(r, "RSI", color=color.new(color.teal, 0), linewidth=2)
+hline(obLvl, "Overbought", color=color.new(color.red, 40), linestyle=hline.style_dotted)
+hline(osLvl, "Oversold",   color=color.new(color.teal, 40), linestyle=hline.style_dotted)
+bgcolor(r > obLvl ? color.new(color.red, 92) : r < osLvl ? color.new(color.teal, 92) : na)
+
+crossUp = ta.crossover(r, obLvl)
+crossDn = ta.crossunder(r, osLvl)
+alertcondition(crossUp, "RSI crossed ABOVE overbought", "PipAtlas: RSI crossed above overbought")
+alertcondition(crossDn, "RSI crossed BELOW oversold",   "PipAtlas: RSI crossed below oversold")

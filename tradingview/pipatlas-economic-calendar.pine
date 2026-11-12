@@ -1,0 +1,47 @@
+//@version=5
+//  PipAtlas Economic Calendar Lines — https://pipatlas.com/tools
+//  Draws dotted event lines (with name labels) at the times you enter,
+//  plus a 15-minute pre-event alert condition. Enter event times from
+//  your own calendar source. Education only, never financial advice.
+indicator("PipAtlas Economic Calendar Lines", overlay=true, max_lines_count=50, max_labels_count=50)
+
+i_t1 = input.time(timestamp(2026, 1, 1, 0, 0), "Event 1 time", inline = "e1")
+i_n1 = input.string("NFP", "", inline = "e1")
+i_g1 = input.string("high", "impact (high/med/low)", inline = "e1")
+i_t2 = input.time(timestamp(2026, 1, 1, 0, 0), "Event 2 time", inline = "e2")
+i_n2 = input.string("CPI", "", inline = "e2")
+i_g2 = input.string("high", "", inline = "e2")
+i_t3 = input.time(timestamp(2026, 1, 1, 0, 0), "Event 3 time", inline = "e3")
+i_n3 = input.string("Rate decision", "", inline = "e3")
+i_g3 = input.string("high", "", inline = "e3")
+i_t4 = input.time(timestamp(2026, 1, 1, 0, 0), "Event 4 time", inline = "e4")
+i_n4 = input.string("GDP", "", inline = "e4")
+i_g4 = input.string("med", "", inline = "e4")
+i_t5 = input.time(timestamp(2026, 1, 1, 0, 0), "Event 5 time", inline = "e5")
+i_n5 = input.string("PMI", "", inline = "e5")
+i_g5 = input.string("med", "", inline = "e5")
+i_t6 = input.time(timestamp(2026, 1, 1, 0, 0), "Event 6 time", inline = "e6")
+i_n6 = input.string("Other", "", inline = "e6")
+i_g6 = input.string("low", "", inline = "e6")
+
+impactColor(imp) => imp == "high" ? color.red : imp == "med" ? color.orange : color.gray
+
+drawEvent(t, name, imp) =>
+    if t > 0
+        hi = ta.highest(high, 30)
+        lo = ta.lowest(low, 30)
+        line.new(x1 = t, y1 = lo, x2 = t, y2 = hi, xloc = xloc.bar_time, color = impactColor(imp), style = line.style_dotted, width = 1)
+        label.new(x = t, y = hi, text = name, xloc = xloc.bar_time, style = label.style_label_down, color = impactColor(imp), textcolor = color.white, size = size.small)
+
+var bool drawn = false
+if barstate.islast and not drawn
+    drawn := true
+    drawEvent(i_t1, i_n1, i_g1)
+    drawEvent(i_t2, i_n2, i_g2)
+    drawEvent(i_t3, i_n3, i_g3)
+    drawEvent(i_t4, i_n4, i_g4)
+    drawEvent(i_t5, i_n5, i_g5)
+    drawEvent(i_t6, i_n6, i_g6)
+
+soon(t) => t > 0 and time <= t and t - time <= 15 * 60 * 1000
+alertcondition(soon(i_t1) or soon(i_t2) or soon(i_t3) or soon(i_t4) or soon(i_t5) or soon(i_t6), "PipAtlas: event within 15 min", "High-impact economic event within 15 minutes")
